@@ -3,11 +3,10 @@ package com.mln.client;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.mln.client.App.ServerConfig;
 
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -23,6 +22,7 @@ public class MaudioClient implements ClientModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	public static ServerConfig config;
+	public static SubsonicConnection connection;
 
 	@Override
 	public void onInitializeClient() {
@@ -34,16 +34,35 @@ public class MaudioClient implements ClientModInitializer {
 				return 1;
 			}));
 		});
+
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("get_artists").executes(context -> {
+				List<MusicFolder> folders = connection.getArtists();
+				for (MusicFolder folder : folders) {
+					context.getSource().sendFeedback(Component.literal(folder.getName()));
+				}
+				return 1;
+			}));
+		});
 		LOGGER.info("Maudio Client Initialized!");
 		LOGGER.info("Working directory: " + System.getProperty("user.dir"));
 
 		try {
 			config = parseConfig(System.getProperty("user.dir") + "/maudio.yaml");
 			LOGGER.info("Subsonic URL: " + config.serverUrl);
+
+			connection = new SubsonicConnection(config.serverUrl, config.username, config.password);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
+
+    public static class ServerConfig {
+        public String serverUrl;
+        public String username;
+        public String password;
+    }
+
 
 	public static ServerConfig parseConfig(String filePath) throws IOException {
 		ServerConfig config = new ServerConfig();
