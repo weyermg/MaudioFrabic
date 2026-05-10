@@ -37,13 +37,28 @@ public class MaudioClient implements ClientModInitializer {
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			dispatcher.register(ClientCommandManager.literal("get_artists").executes(context -> {
-				List<MusicFolder> folders = connection.getArtists();
-				for (MusicFolder folder : folders) {
+				List<SearchResult> folders = connection.getArtists();
+				for (SearchResult folder : folders) {
 					context.getSource().sendFeedback(Component.literal(folder.getName()));
 				}
 				return 1;
 			}));
 		});
+
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("search")
+					.then(ClientCommandManager.argument("query", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+					.executes(context -> {
+						String query = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "query");
+						List<SearchResult> folders = connection.search(query);
+						for (SearchResult folder : folders) {
+							LOGGER.info("Search result: " + folder.toString());
+							context.getSource().sendFeedback(Component.literal(folder.toString()));
+						}
+						return 1;
+					})));
+		});
+
 		LOGGER.info("Maudio Client Initialized!");
 		LOGGER.info("Working directory: " + System.getProperty("user.dir"));
 
