@@ -22,13 +22,15 @@ public class MaudioClient implements ClientModInitializer {
 	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	public static ServerConfig config;
+
 	@Override
 	public void onInitializeClient() {
 		// This entrypoint is suitable for setting up client-specific logic, such as
 		// rendering.
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-			dispatcher.register(ClientCommandManager.literal("examplecommand").executes(context -> {
-				context.getSource().sendFeedback(Component.literal("Called /examplecommand with no arguments."));
+			dispatcher.register(ClientCommandManager.literal("subsonic_url").executes(context -> {
+				context.getSource().sendFeedback(Component.literal(config.serverUrl));
 				return 1;
 			}));
 		});
@@ -36,7 +38,7 @@ public class MaudioClient implements ClientModInitializer {
 		LOGGER.info("Working directory: " + System.getProperty("user.dir"));
 
 		try {
-			ServerConfig config = parseConfig(System.getProperty("user.dir") + "/maudio.yaml");
+			config = parseConfig(System.getProperty("user.dir") + "/maudio.yaml");
 			LOGGER.info("Subsonic URL: " + config.serverUrl);
 		} catch (IOException e) {
 			e.printStackTrace();
