@@ -117,9 +117,7 @@ public class SubsonicConnection {
 
     }
 
-    public String getSubsonicJSON(String requestUrl) throws Exception {
-        String response = HttpUtils.sendGetRequest(requestUrl);
-
+    public String cleanSubsonicJSON(String response) {
         // Remove everything before the first '{' character to get the JSON response
         response = response.substring(response.indexOf("{"));
 
@@ -129,8 +127,128 @@ public class SubsonicConnection {
         // Strip newlines and tabs from the response
         response = response.replaceAll("[\\n\\t]", "");
 
+        return response;
+    }
+
+    public String getSubsonicJSON(String requestUrl) throws Exception {
+        String response = HttpUtils.sendGetRequest(requestUrl);
+
+        response = cleanSubsonicJSON(response);
+
         LOGGER.info("Subsonic response: " + response);
         return response;
+    }
+
+    public String postSubsonicJSON(String requestUrl, String payload) throws Exception {
+        String response = HttpUtils.sendPostRequest(requestUrl, payload);
+
+        response = cleanSubsonicJSON(response);
+
+        LOGGER.info("Subsonic response: " + response);
+        return response;
+    }
+
+    public Song getSong(String id) {
+        try {
+            String requestUrl = baseUrl + "/rest/getSong.view?u=" + username + "&p=" + password
+                    + "&v=1.16.1&c=maudio&f=json&id=" + java.net.URLEncoder.encode(id, "UTF-8");
+            String response = getSubsonicJSON(requestUrl);
+
+            JSONObject json = new JSONObject(response);
+            JSONObject sresponse = json.getJSONObject("subsonic-response");
+            if(sresponse.has("error")) {
+                LOGGER.error("Subsonic error: " + sresponse.getJSONObject("error").getString("message"));
+                return null;
+            }
+            if (sresponse.has("song")) {
+                JSONObject songJson = sresponse.getJSONObject("song");
+                String songId = songJson.optString("id");
+                String parent = songJson.optString("parent");
+                boolean isDir = songJson.optBoolean("isDir", false);
+                String title = songJson.optString("title");
+                String artist = songJson.optString("artist");
+                String coverArt = songJson.optString("coverArt");
+                
+                String genre = null;
+                if (songJson.has("genres")) {
+                    JSONArray genresArray = songJson.getJSONArray("genres");
+                    List<String> genreList = new ArrayList<>();
+                    for (int j = 0; j < genresArray.length(); j++) {
+                        genreList.add(genresArray.getJSONObject(j).getString("name"));
+                    }
+                    genre = String.join(", ", genreList);
+                } else if (songJson.has("genre")) {
+                    genre = songJson.optString("genre");
+                }
+
+                return new Song(songId, parent, isDir, title, artist, coverArt, genre);
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to fetch song: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    public String getTranscodeDecision(String id) {
+        try {
+            String requestUrl = baseUrl + "/rest/getTranscodeDecision.view?u=" + username + "&p=" + password
+                    + "&v=1.16.1&c=maudio&f=json&id=" + java.net.URLEncoder.encode(id, "UTF-8");
+
+            String payload = "{\n" +
+                    "  \"name\": \"Maudio\",\n" +
+                    "  \"platform\": \"Minecraft\",\n" +
+                    "  \"maxAudioBitrate\": 512000,\n" +
+                    "  \"maxTranscodingAudioBitrate\": 256000,\n" +
+                    "  \"directPlayProfiles\": [\n" +
+                    "    {\n" +
+                    "      \"containers\": [ \"ogg\" ],\n" +
+                    "      \"audioCodecs\": [ \"ogg\", \"vorbis\" ],\n" +
+                    "      \"protocols\": [ \"http\" ],\n" +
+                    "      \"maxAudioChannels\": 2\n" +
+                    "    }\n" +
+                    "  ],\n" +
+                    "  \"transcodingProfiles\": [\n" +
+                    "    {\n" +
+                    "      \"container\": \"ogg\",\n" +
+                    "      \"audioCodec\": \"ogg\",\n" +
+                    "      \"protocol\": \"http\",\n" +
+                    "      \"maxAudioChannels\": 2\n" +
+                    "    }\n" +
+                    "  ],\n" +
+                    "  \"codecProfiles\": [\n" +
+                    "    {\n" +
+                    "      \"type\": \"AudioCodec\",\n" +
+                    "      \"name\": \"ogg\",\n" +
+                    "      \"limitations\": []\n" +
+                    "    }\n" +
+                    "  ]\n" +
+                    "}";
+
+            String responseStr = postSubsonicJSON(requestUrl, payload);
+            JSONObject json = new JSONObject(responseStr);
+            JSONObject sresponse = json.getJSONObject("subsonic-response");
+
+            if (sresponse.has("error")) {
+                LOGGER.error("Subsonic error: " + sresponse.getJSONObject("error").getString("message"));
+                return "";
+            }
+
+            if (sresponse.has("transcodeDecision")) {
+                JSONObject decision = sresponse.getJSONObject("transcodeDecision");
+                return decision.getString("transcodeParams");
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to fetch transcode decision: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return "";
+    }
+
+    public void getTranscodeStream(String id) {
+        String transcodeParams = getTranscodeDecision(id);
+        LOGGER.info("Transcode params for song " + id + ": " + transcodeParams);
     }
 
     // TODO: implement this

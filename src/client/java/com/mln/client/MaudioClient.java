@@ -59,6 +59,32 @@ public class MaudioClient implements ClientModInitializer {
 					})));
 		});
 
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("song_info")
+					.then(ClientCommandManager.argument("id", com.mojang.brigadier.arguments.StringArgumentType.string())
+					.executes(context -> {
+						String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "id");
+						Song song = connection.getSong(id);
+						if (song != null) {
+							LOGGER.info("Song info: " + song.toString());
+							context.getSource().sendFeedback(Component.literal(song.toString()));
+						} else {
+							context.getSource().sendFeedback(Component.literal("Song not found."));
+						}
+						return 1;
+					})));
+		});
+
+		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+			dispatcher.register(ClientCommandManager.literal("play")
+					.then(ClientCommandManager.argument("id", com.mojang.brigadier.arguments.StringArgumentType.string())
+					.executes(context -> {
+						String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "id");
+						connection.getTranscodeStream(id);
+						return 1;
+					})));
+		});
+
 		LOGGER.info("Maudio Client Initialized!");
 		LOGGER.info("Working directory: " + System.getProperty("user.dir"));
 
