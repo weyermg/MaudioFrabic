@@ -1,5 +1,7 @@
 package com.mln.client;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -102,6 +104,88 @@ public class HttpUtils {
     public static void sendMessage(OutputStream out, String message) throws IOException {
         byte[] msg = message.getBytes(StandardCharsets.UTF_8);
         sendMessage(out, msg);
+    }
+
+    public static InputStream getBinaryStream(String urlStr) throws Exception {
+
+        java.net.URL url = new java.net.URL(urlStr);
+
+        String host = url.getHost();
+
+        boolean isHttps =
+                "https".equalsIgnoreCase(url.getProtocol());
+
+        int port = url.getPort() != -1
+                ? url.getPort()
+                : (isHttps ? 443 : 80);
+
+        String path = url.getFile();
+
+        if (path.isEmpty()) {
+            path = "/";
+        }
+
+        Socket socket = isHttps
+                ? SSLSocketFactory.getDefault().createSocket(host, port)
+                : new Socket(host, port);
+
+        OutputStream out = socket.getOutputStream();
+
+        String request =
+                "GET " + path + " HTTP/1.1\r\n" +
+                "Host: " + host + "\r\n" +
+                "Connection: close\r\n\r\n";
+
+        out.write(request.getBytes(StandardCharsets.UTF_8));
+        out.flush();
+
+        InputStream in = socket.getInputStream();
+
+        // Read headers
+        ByteArrayOutputStream headerBuffer =
+                new ByteArrayOutputStream();
+
+        while (true) {
+
+            int b = in.read();
+
+            if (b == -1) {
+                socket.close();
+
+                throw new IOException(
+                        "Connection closed before headers finished"
+                );
+            }
+
+            headerBuffer.write(b);
+
+            byte[] data = headerBuffer.toByteArray();
+
+            int len = data.length;
+
+            if (len >= 4 &&
+                data[len - 4] == '\r' &&
+                data[len - 3] == '\n' &&
+                data[len - 2] == '\r' &&
+                data[len - 1] == '\n') {
+                break;
+            }
+        }
+
+        String headers =
+                headerBuffer.toString(StandardCharsets.UTF_8);
+
+        System.out.println(headers);
+
+        // Return stream that also closes socket
+        return new FilterInputStream(in) {
+
+            @Override
+            public void close() throws IOException {
+                super.close();
+                socket.close();
+            }
+        };
     }
 
 }

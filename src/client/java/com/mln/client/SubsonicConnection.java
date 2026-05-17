@@ -1,5 +1,6 @@
 package com.mln.client;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.json.JSONArray;
@@ -191,64 +192,11 @@ public class SubsonicConnection {
         return null;
     }
 
-    public String getTranscodeDecision(String id) {
-        try {
-            String requestUrl = baseUrl + "/rest/getTranscodeDecision.view?u=" + username + "&p=" + password
-                    + "&v=1.16.1&c=maudio&f=json&id=" + java.net.URLEncoder.encode(id, "UTF-8");
-
-            String payload = "{\n" +
-                    "  \"name\": \"Maudio\",\n" +
-                    "  \"platform\": \"Minecraft\",\n" +
-                    "  \"maxAudioBitrate\": 512000,\n" +
-                    "  \"maxTranscodingAudioBitrate\": 256000,\n" +
-                    "  \"directPlayProfiles\": [\n" +
-                    "    {\n" +
-                    "      \"containers\": [ \"ogg\" ],\n" +
-                    "      \"audioCodecs\": [ \"ogg\", \"vorbis\" ],\n" +
-                    "      \"protocols\": [ \"http\" ],\n" +
-                    "      \"maxAudioChannels\": 2\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"transcodingProfiles\": [\n" +
-                    "    {\n" +
-                    "      \"container\": \"ogg\",\n" +
-                    "      \"audioCodec\": \"ogg\",\n" +
-                    "      \"protocol\": \"http\",\n" +
-                    "      \"maxAudioChannels\": 2\n" +
-                    "    }\n" +
-                    "  ],\n" +
-                    "  \"codecProfiles\": [\n" +
-                    "    {\n" +
-                    "      \"type\": \"AudioCodec\",\n" +
-                    "      \"name\": \"ogg\",\n" +
-                    "      \"limitations\": []\n" +
-                    "    }\n" +
-                    "  ]\n" +
-                    "}";
-
-            String responseStr = postSubsonicJSON(requestUrl, payload);
-            JSONObject json = new JSONObject(responseStr);
-            JSONObject sresponse = json.getJSONObject("subsonic-response");
-
-            if (sresponse.has("error")) {
-                LOGGER.error("Subsonic error: " + sresponse.getJSONObject("error").getString("message"));
-                return "";
-            }
-
-            if (sresponse.has("transcodeDecision")) {
-                JSONObject decision = sresponse.getJSONObject("transcodeDecision");
-                return decision.getString("transcodeParams");
-            }
-        } catch (Exception e) {
-            System.out.println("Failed to fetch transcode decision: " + e.getMessage());
-            e.printStackTrace();
-        }
-        return "";
-    }
-
-    public void getTranscodeStream(String id) {
-        String transcodeParams = getTranscodeDecision(id);
-        LOGGER.info("Transcode params for song " + id + ": " + transcodeParams);
+    public InputStream getStream(String id) throws Exception {
+        String streamUrl = baseUrl + "/rest/stream.view?u=" + username + "&p=" + password
+                + "&v=1.16.1&c=maudio&id=" + java.net.URLEncoder.encode(id, "UTF-8") + "&format=ogg";
+        LOGGER.info("Stream URL for song " + id + ": " + streamUrl);
+        return HttpUtils.getBinaryStream(streamUrl);
     }
 
     // TODO: implement this
