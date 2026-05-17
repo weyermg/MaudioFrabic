@@ -26,6 +26,7 @@ public class MaudioClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		Playback playback = new Playback();
 		// This entrypoint is suitable for setting up client-specific logic, such as
 		// rendering.
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
@@ -91,7 +92,10 @@ public class MaudioClient implements ClientModInitializer {
 
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			dispatcher.register(ClientCommandManager.literal("testsound").executes(context -> {
-				Playback.playAudio();
+				playback.start();
+				playback.submitAudio(Playback.generateTone(440, 2.0));
+				playback.submitAudio(Playback.generateTone(880, 2.0));
+				playback.submitAudio(Playback.generateTone(220, 2.0));
 				return 1;
 			}));
 		});
