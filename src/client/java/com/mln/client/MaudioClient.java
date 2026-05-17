@@ -3,7 +3,10 @@ package com.mln.client;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
+
+import javax.sound.sampled.AudioFormat;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,7 +88,24 @@ public class MaudioClient implements ClientModInitializer {
 							.argument("id", com.mojang.brigadier.arguments.StringArgumentType.string())
 							.executes(context -> {
 								String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "id");
-								connection.getTranscodeStream(id);
+								try {
+									context.getSource().sendFeedback(Component.literal("Fetching stream for song ID: " + id));
+									InputStream audioStream = connection.getStream(id);
+
+									byte[] buffer = new byte[8192];
+									int bytesRead;
+
+									//We've requested the server to transcode to OGG
+									context.getSource().sendFeedback(Component.literal("Playing song ID: " + id));
+									while ((bytesRead = audioStream.read(buffer)) != -1) {
+										LOGGER.info("Read " + bytesRead + " bytes from stream for song ID: " + id);
+										Playback.playAudio(buffer);
+									}
+
+									audioStream.close();
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
 								return 1;
 							})));
 		});
