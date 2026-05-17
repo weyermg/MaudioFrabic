@@ -89,17 +89,18 @@ public class MaudioClient implements ClientModInitializer {
 							.executes(context -> {
 								String id = com.mojang.brigadier.arguments.StringArgumentType.getString(context, "id");
 								try {
-									context.getSource().sendFeedback(Component.literal("Fetching stream for song ID: " + id));
+									context.getSource()
+											.sendFeedback(Component.literal("Fetching stream for song ID: " + id));
 									InputStream audioStream = connection.getStream(id);
 
 									byte[] buffer = new byte[8192];
 									int bytesRead;
 
-									//We've requested the server to transcode to OGG
+									// We've requested the server to transcode to OGG
 									context.getSource().sendFeedback(Component.literal("Playing song ID: " + id));
 									while ((bytesRead = audioStream.read(buffer)) != -1) {
 										LOGGER.info("Read " + bytesRead + " bytes from stream for song ID: " + id);
-										Playback.playAudio(buffer);
+										playback.submitAudio(buffer);
 									}
 
 									audioStream.close();
